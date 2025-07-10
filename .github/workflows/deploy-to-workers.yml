@@ -1,0 +1,64 @@
+name: Deploy to Workers
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - _worker_obfuscated.js
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy_to_cloudflare:
+    name: Deploy to Cloudflare Workers
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Deploy to Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --name ${{ secrets.CLOUDFLARE_WORKER_NAME }}
+
+  notify_success:
+    name: Notify on Success via Telegram
+    runs-on: ubuntu-latest
+    if: success()
+    needs:
+      - deploy_to_cloudflare
+
+    steps:
+      - name: Send Telegram Success Notification
+        run: |
+          MESSAGE="<b>✅ Deploy Succeeded</b>\n"
+          MESSAGE+="Repository: <b>${{ github.repository }}</b>\n"
+          MESSAGE+="• Obfuscated worker deployed successfully as <b>${{ secrets.CLOUDFLARE_WORKER_NAME }}</b>."
+
+          curl -s -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage \
+            -H "Content-Type: application/json" \
+            -d "{\"chat_id\": \"${{ secrets.TELEGRAM_CHAT_ID }}\", \"text\": \"$MESSAGE\", \"parse_mode\": \"HTML\"}"
+
+  notify_failure:
+    name: Notify on Failure via Telegram
+    runs-on: ubuntu-latest
+    if: failure()
+    needs:
+      - deploy_to_cloudflare
+
+    steps:
+      - name: Send Telegram Failure Notification
+        run: |
+          MESSAGE="<b>❌ Deploy FAILED</b>\n"
+          MESSAGE+="Repository: <b>${{ github.repository }}</b>\n"
+          MESSAGE+="• Deployment of obfuscated worker <b>${{ secrets.WORKER_NAME }}</b> failed."
+
+          curl -s -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage \
+            -H "Content-Type: application/json" \
+            -d "{\"chat_id\": \"${{ secrets.TELEGRAM_CHAT_ID }}\", \"text\": \"$MESSAGE\", \"parse_mode\": \"HTML\"}"

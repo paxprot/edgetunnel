@@ -1,6 +1,12 @@
 name: 混淆当前版本源码
+
 on:
-    workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - _worker.js
+  workflow_dispatch:
 
 jobs:
   obfuscate:
@@ -9,54 +15,55 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
-      - name: 使用 Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: "16"
 
-      - name: 安装依赖
+      - name: Install javascript-obfuscator globally
         run: npm install -g javascript-obfuscator
 
-      - name: 检查备份文件是否存在
+      - name: Remove old obfuscated file if exists
         run: |
-          if [ ! -f _worker.js.backup ]; then
-            echo "备份文件 _worker.js.backup 不存在，正在创建..."
-            cp _worker.js _worker.js.backup
+          if [ -f _worker_obfuscated.js ]; then
+            rm _worker_obfuscated.js
+            echo "已删除旧的 _worker_obfuscated.js"
           fi
-          cp _worker.js.backup _worker_temp.js
 
-      - name: 混淆代码
+      - name: Obfuscate _worker.js
         run: |
-          javascript-obfuscator _worker_temp.js --output _worker.js \
-          --compact true \
-          --control-flow-flattening true \
-          --control-flow-flattening-threshold 1 \
-          --dead-code-injection true \
-          --dead-code-injection-threshold 1 \
-          --identifier-names-generator hexadecimal \
-          --rename-globals true \
-          --string-array true \
-          --string-array-encoding 'rc4' \
-          --string-array-threshold 1 \
-          --transform-object-keys true \
-          --unicode-escape-sequence true
+          javascript-obfuscator _worker.js \
+            --output _worker_obfuscated.js \
+            --compact true \
+            --control-flow-flattening true \
+            --control-flow-flattening-threshold 1 \
+            --dead-code-injection true \
+            --dead-code-injection-threshold 1 \
+            --identifier-names-generator hexadecimal \
+            --rename-globals true \
+            --string-array true \
+            --string-array-encoding 'rc4' \
+            --string-array-threshold 1 \
+            --transform-object-keys true \
+            --unicode-escape-sequence true
 
-      - name: 提交更改
+      - name: Commit changes if any
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add _worker.js _worker.js.backup
+          git add _worker_obfuscated.js
           if git diff --cached --quiet; then
             echo "没有文件更改，跳过提交"
           else
-            git commit -m "混淆 _worker.js 文件并备份原文件"
+            git commit -m "生成新的 _worker_obfuscated.js 文件"
           fi
 
-      - name: 推送更改
+      - name: Push changes
         uses: ad-m/github-push-action@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
