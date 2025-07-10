@@ -1,4 +1,4 @@
-name: 混淆当前版本源码
+name: Obfuscate js code
 
 on:
   push:
@@ -16,23 +16,23 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: "16"
+          node-version: "20"
 
       - name: Install javascript-obfuscator globally
-        run: npm install -g javascript-obfuscator
+        run: npm install -g javascript-obfuscator@4.1.1
 
       - name: Remove old obfuscated file if exists
         run: |
           if [ -f _worker_obfuscated.js ]; then
             rm _worker_obfuscated.js
-            echo "已删除旧的 _worker_obfuscated.js"
+            echo "Remove old _worker_obfuscated.js"
           fi
 
       - name: Obfuscate _worker.js
@@ -41,14 +41,14 @@ jobs:
             --output _worker_obfuscated.js \
             --compact true \
             --control-flow-flattening true \
-            --control-flow-flattening-threshold 1 \
+            --control-flow-flattening-threshold 0.8 \
             --dead-code-injection true \
-            --dead-code-injection-threshold 1 \
+            --dead-code-injection-threshold 0.5 \
             --identifier-names-generator hexadecimal \
             --rename-globals true \
             --string-array true \
             --string-array-encoding 'rc4' \
-            --string-array-threshold 1 \
+            --string-array-threshold 0.8 \
             --transform-object-keys true \
             --unicode-escape-sequence true
 
@@ -58,9 +58,9 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git add _worker_obfuscated.js
           if git diff --cached --quiet; then
-            echo "没有文件更改，跳过提交"
+            echo "No file is changed, skip commit"
           else
-            git commit -m "生成新的 _worker_obfuscated.js 文件"
+            git commit -m "Generate new _worker_obfuscated.js"
           fi
 
       - name: Push changes
