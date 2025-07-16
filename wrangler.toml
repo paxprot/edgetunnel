@@ -1,4 +1,3 @@
 main = "_worker_obfuscated.js"
 keep_vars = true
 compatibility_date = "2025-07-12"
-keep_vars = true
