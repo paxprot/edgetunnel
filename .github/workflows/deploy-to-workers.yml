@@ -26,6 +26,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy --name ${{ secrets.CLOUDFLARE_WORKER_NAME }}
+          wranglerVersion: "latest"
 
   notify_success:
     name: Notify on Success via Telegram
